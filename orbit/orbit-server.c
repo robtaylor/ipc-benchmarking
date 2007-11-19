@@ -9,8 +9,6 @@
 
 #include "Accessibility.h"
 
-extern Accessibility_Accessible global_accessible_parent;
-
 static CORBA_ORB          global_orb = CORBA_OBJECT_NIL;
 static PortableServer_POA root_poa   = CORBA_OBJECT_NIL;
 	
@@ -88,6 +86,7 @@ server_cleanup (CORBA_ORB           orb,
 		CORBA_Object        ref,
 		CORBA_Environment  *ev)
 {
+	int i = 0;
 	PortableServer_ObjectId   *objid       = NULL;
 
 	objid = PortableServer_POA_reference_to_id (poa, ref, ev);
@@ -96,15 +95,29 @@ server_cleanup (CORBA_ORB           orb,
 	PortableServer_POA_deactivate_object (poa, objid, ev);
 	if (etk_raised_exception(ev)) return;
 
-	PortableServer_POA_destroy (poa, TRUE, FALSE, ev);
+        CORBA_Object_release (ref, ev);
 	if (etk_raised_exception(ev)) return;
 
 	CORBA_free (objid);
+	
+	for (i=0; i<NUM_RELATIONS; i++)
+	{
+		objid = PortableServer_POA_reference_to_id (poa, global_accessible_relations[i], ev);
+		if (etk_raised_exception(ev)) return;
+		
+		PortableServer_POA_deactivate_object (poa, objid, ev);
+		if (etk_raised_exception(ev)) return;
+
+        	CORBA_Object_release (ref, ev);
+		if (etk_raised_exception(ev)) return;
+
+		CORBA_free (objid);
+	}
+
+	PortableServer_POA_destroy (poa, TRUE, FALSE, ev);
+	if (etk_raised_exception(ev)) return;
 
         CORBA_Object_release ((CORBA_Object) poa, ev);
-	if (etk_raised_exception(ev)) return;
-	
-        CORBA_Object_release (ref, ev);
 	if (etk_raised_exception(ev)) return;
 
         if (orb != CORBA_OBJECT_NIL)
@@ -119,9 +132,17 @@ server_activate_service (CORBA_ORB           orb,
 			 PortableServer_POA  poa,
 			 CORBA_Environment  *ev)
 {
+	int i = 0;
 	global_accessible_parent = impl_Accessibility_Accessible__create (poa, ev);
 	if (etk_raised_exception(ev)) 
 		return CORBA_OBJECT_NIL;
+
+	for (i=0; i<NUM_RELATIONS; i++)
+	{
+		global_accessible_relations[i] = impl_Accessibility_Relation__create(poa, ev);
+		if (etk_raised_exception(ev)) 
+			global_accessible_relations[i] = CORBA_OBJECT_NIL;
+	}
 	
 	return global_accessible_parent;
 }

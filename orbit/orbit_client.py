@@ -18,6 +18,17 @@ def main(args):
 	t = time()
 	for count in range(NUM_CALLS):
 		role = parent.getRole()
-	print "Time taken (getRole): %f" % (time() - t)
+	print "Time taken (getRole): %f\n" % (time() - t)
 
-if __name__ == '__main__':sys.exit(main(sys.argv))
+	t = time()
+	for count in range(NUM_CALLS):
+		accessible = parent.parent
+	print "Time taken (parent): %f\n" % (time() - t)
+	
+	t = time()
+	for count in range(NUM_CALLS):
+		relations = parent.getRelationSet()
+	print "Time taken (parent): %f\n" % (time() - t)
+
+if __name__ == '__main__':
+	sys.exit(main(sys.argv))

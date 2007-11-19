@@ -6,7 +6,10 @@
 #include "Accessibility.h"
 
 /*** App-specific servant structures ***/
+#define NUM_RELATIONS 10
 Accessibility_Accessible global_accessible_parent;
+Accessibility_Relation   global_accessible_relations[NUM_RELATIONS];
+
 
 #if !defined(_typedef_impl_POA_Accessibility_Relation_)
 #define _typedef_impl_POA_Accessibility_Relation_ 1
@@ -1554,8 +1557,14 @@ impl_Accessibility_Accessible_getRelationSet(impl_POA_Accessibility_Accessible *
 CORBA_Environment *ev)
 {
 Accessibility_RelationSet* retval;
+CORBA_long i=0;
  /* ------   insert method code here   ------ */
  /* ------ ---------- end ------------ ------ */
+retval = ORBit_sequence_alloc (TC_Accessibility_RelationSet, NUM_RELATIONS);
+for(i=0; i<NUM_RELATIONS; i++)
+  {
+    ORBit_sequence_index(retval, i) = CORBA_Object_duplicate(global_accessible_relations[i], ev);
+  }
 
 return retval;
 }
