@@ -1,7 +1,8 @@
 PREFIX ?= /usr
 CC = gcc
-CFLAGS=$(shell pkg-config dbus-1 --cflags)
-LDFLAGS=$(shell pkg-config dbus-1 --libs)
+CFLAGS=-g -O0
+CFLAGS+=$(shell pkg-config dbus-1 dbus-glib-1 --cflags)
+LDFLAGS=$(shell pkg-config dbus-1 dbus-glib-1 --libs)
 
 all: dbus-server
 
