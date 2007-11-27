@@ -84,6 +84,7 @@ static void
 server_cleanup (CORBA_ORB           orb,
 		PortableServer_POA  poa,
 		CORBA_Object        ref,
+		CORBA_Object        reg,
 		CORBA_Environment  *ev)
 {
 	int i = 0;
@@ -99,6 +100,18 @@ server_cleanup (CORBA_ORB           orb,
 	if (etk_raised_exception(ev)) return;
 
 	CORBA_free (objid);
+
+	objid = PortableServer_POA_reference_to_id (poa, reg, ev);
+	if (etk_raised_exception(ev)) return;
+		
+	PortableServer_POA_deactivate_object (poa, objid, ev);
+	if (etk_raised_exception(ev)) return;
+
+        CORBA_Object_release (reg, ev);
+	if (etk_raised_exception(ev)) return;
+
+	CORBA_free (objid);
+
 	
 	for (i=0; i<NUM_RELATIONS; i++)
 	{
@@ -108,7 +121,7 @@ server_cleanup (CORBA_ORB           orb,
 		PortableServer_POA_deactivate_object (poa, objid, ev);
 		if (etk_raised_exception(ev)) return;
 
-        	CORBA_Object_release (ref, ev);
+		CORBA_Object_release (ref, ev);
 		if (etk_raised_exception(ev)) return;
 
 		CORBA_free (objid);
@@ -140,19 +153,36 @@ server_activate_service (CORBA_ORB           orb,
 	for (i=0; i<NUM_RELATIONS; i++)
 	{
 		global_accessible_relations[i] = impl_Accessibility_Relation__create(poa, ev);
-		if (etk_raised_exception(ev)) 
+		if (etk_raised_exception(ev)) { 
 			global_accessible_relations[i] = CORBA_OBJECT_NIL;
+			g_print ("Writing NIL relation object");
+		}
 	}
 	
 	return global_accessible_parent;
+}
+
+static CORBA_Object
+registry_activate_service (CORBA_ORB           orb,
+	   		   PortableServer_POA  poa,
+			   CORBA_Environment  *ev)
+{
+	int i = 0;
+	CORBA_Object accessible_registry = impl_Accessibility_Registry__create (poa, ev);
+	if (etk_raised_exception(ev)) 
+		return CORBA_OBJECT_NIL;
+
+	return accessible_registry;
 }
 
 int
 main (int argc, char *argv[])
 {
 	CORBA_Object servant = CORBA_OBJECT_NIL;
+	CORBA_Object registry_servant = CORBA_OBJECT_NIL;
 	
 	CORBA_char filename[] = "/tmp/test-atspi.ior";
+	CORBA_char registry_filename[] = "/tmp/test-registry-atspi.ior";
 
 	CORBA_Environment  ev[1];
 	CORBA_exception_init(ev);
@@ -170,11 +200,22 @@ main (int argc, char *argv[])
 				   filename, 
 				   ev);
 	etk_abort_if_exception(ev, "failed exporting IOR");
+
+	registry_servant = registry_activate_service (global_orb, root_poa, ev);
+	etk_abort_if_exception(ev, "failed activating registry");
+
+	g_print ("Writing registry reference to: %s\n\n", registry_filename);
+
+	etk_export_object_to_file (global_orb, 
+				   registry_servant, 
+				   registry_filename, 
+				   ev);
+	etk_abort_if_exception(ev, "failed exporting IOR");
 	
 	server_run (global_orb, ev);
 	etk_abort_if_exception(ev, "failed entering main loop");
 
-	server_cleanup (global_orb, root_poa, servant, ev);
+	server_cleanup (global_orb, root_poa, servant, registry_servant, ev);
 	etk_abort_if_exception(ev, "failed cleanup");
 
 	exit (0);

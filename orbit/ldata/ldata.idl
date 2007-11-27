@@ -1,0 +1,6 @@
+module Test {
+	interface LargeSeq {
+		typedef sequence<long> LargeData;
+		LargeData get(in long dataSize);
+	};
+};
