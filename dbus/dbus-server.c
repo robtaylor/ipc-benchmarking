@@ -12,6 +12,7 @@
 #include <getopt.h>
 #include <glib.h>
 #include <dbus/dbus-glib.h>
+#include <sys/time.h>
 
 static const char* introspection_string = 
 "<node name=\"/test/dbus/atspi/accessible\">"
@@ -25,10 +26,20 @@ static const char* introspection_string =
 "		<method name=\"getRelationSet\">"
 "			<arg name=\"relations\" type=\"a(so)\" direction=\"out\"/>"
 "		</method>"
+"		<method name=\"getIntArray\">"
+"			<arg name=\"size\" type=\"i\" direction=\"in\"/>"
+"			<arg name=\"intArray\" type=\"ai\" direction=\"out\"/>"
+"		</method>"
+"               <method name=\"registerEventListener\">"
+"               </method>"
+"               <signal name=\"notifyEvent\">"
+"			<arg name=\"event\" type=\"s\"/>"
+"               </signal>"
 "	</interface>"
 "</node>";
 
 #define NUM_RELATIONS 10
+#define NUM_CALLS 18000
 
 static const char* connection_string;
 static const char* bus_name = ":AF1435D";
@@ -56,7 +67,6 @@ reply_to_Introspect(DBusConnection* conn,
   if (!dbus_connection_send(conn, reply, NULL))
     abort_out_of_memory();
 
-  dbus_connection_flush(conn);
   dbus_message_unref(reply);
 }
 
@@ -76,7 +86,6 @@ reply_to_getRole(DBusConnection* conn,
   if (!dbus_connection_send(conn, reply, NULL))
     abort_out_of_memory();
 
-  dbus_connection_flush(conn);
   dbus_message_unref(reply);
 }
 
@@ -105,7 +114,6 @@ reply_to_get_parent(DBusConnection* conn,
   if (!dbus_connection_send(conn, reply, NULL))
     abort_out_of_memory();
 
-  dbus_connection_flush(conn);
   dbus_message_unref(reply);
 }
 
@@ -144,8 +152,89 @@ reply_to_getRelationSet(DBusConnection* conn,
   if (!dbus_connection_send(conn, reply, NULL))
     abort_out_of_memory();
 
-  dbus_connection_flush(conn);
   dbus_message_unref(reply);
+}
+
+static void
+reply_to_getIntArray(DBusConnection* conn,
+	       	     DBusMessage* msg)
+{
+  DBusMessage* reply;
+  DBusMessageIter args;
+  DBusMessageIter subarr;
+  DBusError err;
+  int i;
+  int val = 0xAAAAAAAA;
+  int size;
+  dbus_error_init(&err);
+
+  reply = dbus_message_new_method_return(msg);
+  dbus_message_iter_init_append(reply, &args);
+  if (!dbus_message_get_args(msg, &err, DBUS_TYPE_INT32, &size, DBUS_TYPE_INVALID))
+    abort_out_of_memory();
+
+  if (!dbus_message_iter_open_container(&args, DBUS_TYPE_ARRAY, "i", &subarr))
+    abort_out_of_memory();
+  for (i=0; i<size; i++)
+    {
+      if (!dbus_message_iter_append_basic(&subarr, DBUS_TYPE_INT32, &val))
+        abort_out_of_memory();
+    }
+  if (!dbus_message_iter_close_container(&args, &subarr))
+    abort_out_of_memory();
+
+  if (!dbus_connection_send(conn, reply, NULL))
+    abort_out_of_memory();
+
+  dbus_message_unref(reply);
+}
+
+static void
+send_notify_event(DBusConnection* conn)
+{
+  DBusMessage* sig;
+  DBusMessageIter args;
+
+  sig = dbus_message_new_signal("/test/dbus/atspi/accessible", "test.dbus.atspi.Accessible", "notifyEvent");
+  if (NULL == sig)
+    abort_out_of_memory();
+  dbus_message_iter_init_append(sig, &args);
+  if (!dbus_message_iter_append_basic(&args, DBUS_TYPE_STRING, &connection_string))
+    abort_out_of_memory();
+  if (!dbus_connection_send(conn, sig, NULL))
+    abort_out_of_memory();
+  dbus_message_unref(sig);
+}
+
+static void
+reply_to_register_event_listener(DBusConnection* conn,
+		                 DBusMessage* msg)
+{
+  DBusMessage* reply;
+  DBusMessageIter args;
+  int i;
+  struct timeval start, end;
+  long d_secs;
+  long d_usec;
+
+  reply = dbus_message_new_method_return(msg);
+
+  if (!dbus_connection_send(conn, reply, NULL))
+    abort_out_of_memory();
+
+  dbus_connection_flush(conn);
+  sleep(0);
+  dbus_message_unref(reply);
+
+  gettimeofday(&start, NULL);
+  for (i=0; i<NUM_CALLS; i++)
+    {
+      send_notify_event(conn);
+    }
+  gettimeofday(&end, NULL);
+  d_secs = end.tv_sec - start.tv_sec;
+  d_usec = end.tv_usec - start.tv_usec;
+  printf("\n\nTime taken to emit %d notifyEvent signals %f", NUM_CALLS, (float) d_secs + ((float) d_usec / 1000000.0));
 }
 
 static void
@@ -166,8 +255,12 @@ method_handler_function(DBusConnection* conn,
     reply_to_get_parent(conn, msg);
   else if (dbus_message_is_method_call(msg, "test.dbus.atspi.Accessible", "getRelationSet")) 
     reply_to_getRelationSet(conn, msg);
+  else if (dbus_message_is_method_call(msg, "test.dbus.atspi.Accessible", "getIntArray")) 
+    reply_to_getIntArray(conn, msg);
   else if (dbus_message_is_method_call(msg, "org.freedesktop.DBus.Introspectable", "Introspect")) 
     reply_to_Introspect(conn, msg);
+  else if (dbus_message_is_method_call(msg, "test.dbus.atspi.Accessible", "registerEventListener"))
+    reply_to_register_event_listener(conn, msg);
 }
 
 const DBusObjectPathVTable object_vtable = 
@@ -185,10 +278,12 @@ handle_connection(DBusServer* server,
 		  DBusConnection* conn,
 		  void* data)
 {
+  DBusError err;
+  dbus_connection_ref(conn);
+  dbus_connection_setup_with_g_main(conn, NULL);
   dbus_connection_register_object_path(conn, "/test/dbus/atspi/accessible", &object_vtable, NULL);
+
   connection_string = object_path;
-  while (dbus_connection_read_write_dispatch(conn, -1))
-    ;
 }
 
 int
@@ -197,6 +292,7 @@ main(int argc, char* argv[])
    DBusError err;
    int ret;
    char* param;
+   GMainLoop* main_loop;
 
    int c;
    static int direct_flag = 0;
@@ -214,18 +310,16 @@ main(int argc, char* argv[])
    
    dbus_error_init(&err);
 
+   /* Setup a g_main_loop to handle sending signals, recieving methods */
+   main_loop = g_main_loop_new(NULL, FALSE);
+
    if (direct_flag)
      {
        DBusServer* server;
-       GMainLoop* main_loop;
-
-       main_loop = g_main_loop_new(NULL, FALSE);
 
        server = dbus_server_listen("unix:path=/tmp/testatspi", &err);
        dbus_server_setup_with_g_main(server, NULL);
        dbus_server_set_new_connection_function(server, handle_connection, NULL, NULL);
-
-       g_main_run(main_loop);
      }
    else
      {
@@ -242,8 +336,9 @@ main(int argc, char* argv[])
        }
        connection_string = bus_name;
 
+       dbus_connection_setup_with_g_main(conn, NULL);
        dbus_connection_register_object_path(conn, "/test/dbus/atspi/accessible", &object_vtable, NULL);
-   
+
        ret = dbus_bus_request_name(conn, "test.dbus.atspi", DBUS_NAME_FLAG_REPLACE_EXISTING , &err);
        if (dbus_error_is_set(&err)) { 
           fprintf(stderr, "Name Error (%s)\n", err.message); 
@@ -253,8 +348,7 @@ main(int argc, char* argv[])
           fprintf(stderr, "Not Primary Owner (%d)\n", ret);
           exit(1); 
        }
-
-       while (dbus_connection_read_write_dispatch(conn, -1))
-         ;
      }
+
+   g_main_run(main_loop);
 }
