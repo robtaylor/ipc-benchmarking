@@ -163,28 +163,34 @@ reply_to_getIntArray(DBusConnection* conn,
   DBusMessageIter args;
   DBusMessageIter subarr;
   DBusError err;
+  dbus_int32_t val = 0xAAAAAAAA;
   int i;
-  int val = 0xAAAAAAAA;
   int size;
   dbus_error_init(&err);
+
+  dbus_int32_t* int_array;
 
   reply = dbus_message_new_method_return(msg);
   dbus_message_iter_init_append(reply, &args);
   if (!dbus_message_get_args(msg, &err, DBUS_TYPE_INT32, &size, DBUS_TYPE_INVALID))
     abort_out_of_memory();
 
+  int_array =  malloc(sizeof(dbus_int32_t) * size);
+
+  for (i=0; i<size; i++)
+    int_array[i] = val;
+
   if (!dbus_message_iter_open_container(&args, DBUS_TYPE_ARRAY, "i", &subarr))
     abort_out_of_memory();
-  for (i=0; i<size; i++)
-    {
-      if (!dbus_message_iter_append_basic(&subarr, DBUS_TYPE_INT32, &val))
-        abort_out_of_memory();
-    }
+  if (!dbus_message_iter_append_fixed_array(&subarr, DBUS_TYPE_INT32, &int_array, size))
+    abort_out_of_memory();
   if (!dbus_message_iter_close_container(&args, &subarr))
     abort_out_of_memory();
 
   if (!dbus_connection_send(conn, reply, NULL))
     abort_out_of_memory();
+
+  free(int_array);
 
   dbus_message_unref(reply);
 }
