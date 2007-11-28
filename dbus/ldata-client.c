@@ -14,6 +14,10 @@
 
 #define NUM_EXP 16
 #define NUM_LINEAR 64
+
+#define STEP_EXP 2
+#define STEP_LINEAR 512
+
 #define NUM_CALLS 2000
 
 static void
@@ -75,7 +79,7 @@ main(int argc, char* argv[])
    long d_usec;
 
    int i, j;
-   long arsz = 512;
+   long arsz = STEP_LINEAR;
 
    int c;
    static int direct_flag = 0;
@@ -121,6 +125,6 @@ main(int argc, char* argv[])
        d_secs = end.tv_sec - start.tv_sec;
        d_usec = end.tv_usec - start.tv_usec;
        printf("\n %d,%f", arsz, (float) d_secs + ((float) d_usec / 1000000.0));
-       arsz += 512;
+       arsz += STEP_LINEAR;
    }
 }
