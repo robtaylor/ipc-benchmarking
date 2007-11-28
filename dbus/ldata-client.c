@@ -12,8 +12,9 @@
 #include <getopt.h>
 #include <sys/time.h>
 
-#define NUM_ITER 16
-#define NUM_CALLS 10000
+#define NUM_EXP 16
+#define NUM_LINEAR 64
+#define NUM_CALLS 2000
 
 static void
 abort_out_of_memory(void)
@@ -74,7 +75,7 @@ main(int argc, char* argv[])
    long d_usec;
 
    int i, j;
-   long arsz = 1;
+   long arsz = 512;
 
    int c;
    static int direct_flag = 0;
@@ -109,7 +110,7 @@ main(int argc, char* argv[])
       exit(1); 
    }
 
-   for (i=0; i<NUM_ITER; i++)
+   for (i=0; i<NUM_LINEAR; i++)
    {
        gettimeofday(&start, NULL);
        for (j=0; j<NUM_CALLS; j++)
@@ -119,7 +120,7 @@ main(int argc, char* argv[])
        gettimeofday(&end, NULL);
        d_secs = end.tv_sec - start.tv_sec;
        d_usec = end.tv_usec - start.tv_usec;
-       printf("\n %d : %f\n", arsz, (float) d_secs + ((float) d_usec / 1000000.0));
-       arsz *= 2;
+       printf("\n %d,%f", arsz, (float) d_secs + ((float) d_usec / 1000000.0));
+       arsz += 512;
    }
 }

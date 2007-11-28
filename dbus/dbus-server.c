@@ -164,8 +164,8 @@ reply_to_getIntArray(DBusConnection* conn,
   DBusMessageIter subarr;
   DBusError err;
   dbus_int32_t val = 0xAAAAAAAA;
-  int i;
-  int size;
+  long i;
+  long size;
   dbus_error_init(&err);
 
   dbus_int32_t* int_array;
