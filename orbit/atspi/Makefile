@@ -4,7 +4,7 @@ ORBIT_IDL=$(PREFIX)/bin/orbit-idl-2
 CFLAGS=$(shell pkg-config ORBit-2.0 ORBit-CosNaming-2.0 bonobo-activation-2.0 libbonobo-2.0 libbonoboui-2.0 --cflags)
 CFLAGS+=-g -O0
 LDFLAGS=$(shell pkg-config ORBit-2.0 ORBit-CosNaming-2.0 bonobo-activation-2.0 libbonobo-2.0 libbonoboui-2.0 --libs)
-IDLFLAGS=--skeleton-impl -I/usr/share/idl/bonobo-2.0/ -I/usr/share/idl/bonobo-activation-2.0/ -I./ -D__ACCESSIBILITY_COMPILATION__
+IDLFLAGS=-I/usr/share/idl/bonobo-2.0/ -I/usr/share/idl/bonobo-activation-2.0/ -I./ -D__ACCESSIBILITY_COMPILATION__
 
 TARGETS=orbit-server
 IDLOUT=Accessibility-common.c Accessibility-stubs.c Accessibility-skels.c Accessibility.h
