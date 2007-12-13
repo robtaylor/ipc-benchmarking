@@ -9,11 +9,13 @@ IDLFLAGS=-I/usr/share/idl/bonobo-2.0/ -I/usr/share/idl/bonobo-activation-2.0/ -I
 TARGETS=orbit-server
 IDLOUT=Accessibility-common.c Accessibility-stubs.c Accessibility-skels.c Accessibility.h
 
-all: $(IDLOUT) orbit-server
+all: $(IDLOUT) orbit-server role-client
 
 orbit-server.o: orbit-server.c Accessibility-impl.c
 
 orbit-server : orbit-server.o Accessibility-skels.o Accessibility-common.o examples-toolkit.o Accessibility-stubs.o
+
+role-client : role-client.o Accessibility-common.o examples-toolkit.o Accessibility-stubs.o
 
 $(IDLOUT): Accessibility.idl
 	$(ORBIT_IDL) Accessibility.idl $(IDLFLAGS)
@@ -22,4 +24,4 @@ clean:
 	rm -rf *.o *~ $(IDLOUT) *.ior *.ref *.pyc
 
 distclean: clean
-	rm -rf orbit-server
+	rm -rf orbit-server role-client
