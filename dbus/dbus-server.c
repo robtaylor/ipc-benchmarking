@@ -45,6 +45,8 @@ static const char* connection_string;
 static const char* bus_name = ":AF1435D";
 static const char* object_path = "/test/dbus/atspi/accessible";
 
+static DBusMessage* role_premade;
+
 static void
 abort_out_of_memory(void)
 {
@@ -83,6 +85,24 @@ reply_to_getRole(DBusConnection* conn,
   if (!dbus_message_iter_append_basic(&args, DBUS_TYPE_INT16, &role))
     abort_out_of_memory();
 
+  if (!dbus_connection_send(conn, reply, NULL))
+    abort_out_of_memory();
+
+  dbus_message_unref(reply);
+}
+
+static void
+reply_to_getRolePremade(DBusConnection* conn,
+		 DBusMessage* msg)
+{
+  DBusMessage* reply;
+
+  reply = dbus_message_copy(role_premade);
+
+  dbus_message_set_reply_serial(reply,
+		  dbus_message_get_serial(msg));
+  dbus_message_set_sender(reply,
+		  dbus_message_get_sender(msg));
   if (!dbus_connection_send(conn, reply, NULL))
     abort_out_of_memory();
 
@@ -255,6 +275,8 @@ method_handler_function(DBusConnection* conn,
 			 DBusMessage* msg,
 			 void* usr_data)
 {
+  if (dbus_message_is_method_call(msg, "test.dbus.atspi.Accessible", "getRolePremade")) 
+    reply_to_getRolePremade(conn, msg);
   if (dbus_message_is_method_call(msg, "test.dbus.atspi.Accessible", "getRole")) 
     reply_to_getRole(conn, msg);
   else if (dbus_message_is_method_call(msg, "test.dbus.atspi.Accessible", "get_parent")) 
@@ -300,6 +322,9 @@ main(int argc, char* argv[])
    char* param;
    GMainLoop* main_loop;
 
+   DBusMessageIter args;
+   int role = 6;
+
    int c;
    static int direct_flag = 0;
    int option_index;
@@ -318,6 +343,13 @@ main(int argc, char* argv[])
 
    /* Setup a g_main_loop to handle sending signals, recieving methods */
    main_loop = g_main_loop_new(NULL, FALSE);
+   
+
+   role_premade = dbus_message_new(DBUS_MESSAGE_TYPE_METHOD_RETURN);
+   dbus_message_set_no_reply(role_premade, TRUE);
+   dbus_message_iter_init_append(role_premade, &args);
+   if (!dbus_message_iter_append_basic(&args, DBUS_TYPE_INT16, &role_premade))
+     abort_out_of_memory();
 
    if (direct_flag)
      {
@@ -357,4 +389,5 @@ main(int argc, char* argv[])
      }
 
    g_main_run(main_loop);
+   dbus_message_unref(role_premade);
 }
